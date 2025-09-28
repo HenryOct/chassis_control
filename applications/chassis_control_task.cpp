@@ -85,7 +85,8 @@ extern "C" void chassis_control_task()
 
     while (true) {
         // 循环检查遥控器是否在线
-        if (!remote.is_alive(HAL_GetTick())) {
+        if (!remote.is_alive(HAL_GetTick())) 
+        {
             // 遥控器离线，禁用所有电机
             disable_all_motors();
             osDelay(10);
@@ -93,31 +94,29 @@ extern "C" void chassis_control_task()
         }
         
         // 检测右拨杆状态变化并播放音效
-        if (remote.sw_r != last_sw_r) {
-            // 右拨杆状态发生变化
+        if (remote.sw_r != last_sw_r) 
+        {
             if (remote.sw_r == sp::DBusSwitchMode::MID && last_sw_r == sp::DBusSwitchMode::DOWN) {
-                // 从下档切换到中档 - 播放升调音效
                 request_sound_effect(SoundEffect::SWITCH_UP);
             }
             else if (remote.sw_r == sp::DBusSwitchMode::DOWN && last_sw_r == sp::DBusSwitchMode::MID) {
-                // 从中档切换到下档 - 播放降调音效
                 request_sound_effect(SoundEffect::SWITCH_DOWN);
             }
             last_sw_r = remote.sw_r;  // 更新右拨杆状态
         }
         
         // 右拨杆中档：底盘控制模式  
-        if (remote.sw_r == sp::DBusSwitchMode::MID) {
+        if (remote.sw_r == sp::DBusSwitchMode::MID) 
+        {
             
             // 完整的PID控制底盘
-            const float MAX_LINEAR_SPEED = 2.0f;   // 最大线速度 m/s
+            const float MAX_LINEAR_SPEED = 2.0f;   // 最大线速度 m/s，前后左右各2m/s
             const float ROTATION_SPEED = 2.0f;     // 固定转向速度 2rad/s
             
-            // 直接获取摇杆输入值，无死区
-            float raw_vx = remote.ch_lv;  // 左摇杆前后
-            float raw_vy = remote.ch_lh;  // 左摇杆左右
-            float raw_right_v = remote.ch_rv;  // 右摇杆前后
-            float raw_right_h = remote.ch_rh;  // 右摇杆左右
+            // 直接获取摇杆输入值
+            float raw_vx = remote.ch_lv;
+            float raw_vy = remote.ch_lh;
+            float raw_right_v = remote.ch_rv;
             
             // 直接线性映射
             float vx = raw_vx * MAX_LINEAR_SPEED;   // 前后移动
@@ -136,12 +135,14 @@ extern "C" void chassis_control_task()
             chassis_move_control(vx, vy, wz);
         }
         // 右拨杆下档：全部电机失能
-        else if (remote.sw_r == sp::DBusSwitchMode::DOWN) {
+        else if (remote.sw_r == sp::DBusSwitchMode::DOWN) 
+        {
             // 无论摇杆如何移动，都禁用所有电机
             disable_all_motors();
         }
         // 其他状态：禁用所有电机
-        else {
+        else 
+        {
             disable_all_motors();
         }
         
