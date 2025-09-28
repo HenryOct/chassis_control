@@ -7,9 +7,9 @@
 #include "motor/rm_motor/rm_motor.hpp"
 
 // 底盘电机实例化
-inline sp::RM_Motor chassis_lf(1, sp::RM_Motors::M3508);
-inline sp::RM_Motor chassis_lr(2, sp::RM_Motors::M3508); 
-inline sp::RM_Motor chassis_rf(3, sp::RM_Motors::M3508);
+inline sp::RM_Motor chassis_rf(1, sp::RM_Motors::M3508);
+inline sp::RM_Motor chassis_lf(2, sp::RM_Motors::M3508); 
+inline sp::RM_Motor chassis_lr(3, sp::RM_Motors::M3508);
 inline sp::RM_Motor chassis_rr(4, sp::RM_Motors::M3508);
 
 // 定义一个麦轮底盘
