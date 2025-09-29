@@ -5,6 +5,8 @@
 #include "tools/mecanum/mecanum.hpp"
 #include "tools/pid/pid.hpp"
 #include "motor/rm_motor/rm_motor.hpp"
+#include "referee/pm02/pm02.hpp"
+#include "motor/super_cap/super_cap.hpp"
 
 // 底盘电机实例化
 inline sp::RM_Motor chassis_rf(1, sp::RM_Motors::M3508);
@@ -15,6 +17,15 @@ inline sp::RM_Motor chassis_rr(4, sp::RM_Motors::M3508);
 // 定义一个麦轮底盘
 // 参数：轮子半径0.076m，前后轮距一半0.15m，左右轮距一半0.15m
 inline sp::Mecanum mecanum_chassis(0.076f, 0.15f, 0.15f);
+
+// 外部定义的UART句柄，用于PM02裁判系统通信
+extern UART_HandleTypeDef huart1;
+
+// PM02裁判系统实例化 (使用UART1)
+inline sp::PM02 pm02(&huart1);
+
+// 超级电容实例化 (自动模式)
+inline sp::SuperCap super_cap(sp::SuperCapMode::AUTOMODE);
 
 // PID参数定义 (极保守设置，确保稳定)
 constexpr float PID_DT = 0.001f;    // 1kHz控制频率
@@ -48,6 +59,17 @@ struct ChassisData
     float torque_lr;   // 左后轮输出力矩 N·m
     float torque_rf;   // 右前轮输出力矩 N·m
     float torque_rr;   // 右后轮输出力矩 N·m
+    
+    // 功率控制相关数据
+    uint16_t chassis_power_limit;  // 底盘功率限制 W
+    uint16_t buffer_energy;        // 缓冲能量 J
+    float power_scale_factor;      // 功率缩放因子 (0.0-1.0)
+    bool power_limit_active;       // 功率限制是否激活
 };
+
+// 功率控制函数声明
+void update_power_data();
+void apply_power_limit();
+float calculate_power_scale_factor();
 
 #endif // CHASSIS_CONTROL_HPP

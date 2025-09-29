@@ -15,6 +15,10 @@ void can2_recv(uint32_t stamp_ms)
         chassis_rf.read(can2.rx_data, stamp_ms);
     if (can2.rx_id == chassis_rr.rx_id)  // 0x204
         chassis_rr.read(can2.rx_data, stamp_ms);
+    
+    // 处理超级电容反馈 (ID 0x301)
+    if (can2.rx_id == super_cap.rx_id)
+        super_cap.read(can2.rx_data, stamp_ms);
 }
 
 
