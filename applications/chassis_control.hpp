@@ -16,13 +16,12 @@ inline sp::RM_Motor chassis_rr(4, sp::RM_Motors::M3508);
 
 // 定义一个麦轮底盘
 // 参数：轮子半径0.076m，前后轮距一半0.15m，左右轮距一半0.15m
-inline sp::Mecanum mecanum_chassis(0.076f, 0.15f, 0.15f);
+inline sp::Mecanum mecanum_chassis(0.077f, 0.165f, 0.185f);
 
-// 外部定义的UART句柄，用于PM02裁判系统通信
-extern UART_HandleTypeDef huart1;
-
-// PM02裁判系统实例化 (使用UART1)
-inline sp::PM02 pm02(&huart1);
+// 外部声明，在对应任务中实例化
+extern sp::DBus remote;     // uart_task.cpp中实例化
+extern sp::PM02 pm02;       // uart_task.cpp中实例化
+extern sp::CAN can2;        // can_task.cpp中实例化
 
 // 超级电容实例化 (自动模式)
 inline sp::SuperCap super_cap(sp::SuperCapMode::AUTOMODE);

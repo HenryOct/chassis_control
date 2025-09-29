@@ -76,14 +76,11 @@ void disable_all_motors()
     chassis_data.torque_rf = 0.0f;
     chassis_data.torque_rr = 0.0f;
     
-    // 停止底盘电机
+    // 停止底盘电机（CAN发送在can_task中处理）
     chassis_lf.cmd(0.0f);
     chassis_lr.cmd(0.0f);
     chassis_rf.cmd(0.0f);
     chassis_rr.cmd(0.0f);
-    
-    // 发送底盘电机控制指令 (0x200)
-    send_chassis_motors();
 }
 
 // 底盘移动控制
@@ -118,28 +115,15 @@ void chassis_move_control(float vx, float vy, float wz)
     // 应用功率限制
     apply_power_limit();
     
-    // 写入控制指令
+    // 写入控制指令到电机对象（CAN发送在can_task中处理）
     chassis_lf.cmd(chassis_data.torque_lf);
     chassis_lr.cmd(chassis_data.torque_lr);
     chassis_rf.cmd(chassis_data.torque_rf);
     chassis_rr.cmd(chassis_data.torque_rr);
-    
-    // 发送控制指令
-    send_chassis_motors();
 }
 
 extern "C" void chassis_control_task()
 {
-    // 初始化遥控器
-    remote.request();
-    
-    // 初始化CAN2总线
-    can2.config();
-    can2.start();
-    
-    // 初始化PM02裁判系统
-    pm02.request();
-    
     // 初始化底盘数据
     chassis_data.vx_set = 0.0f;
     chassis_data.vy_set = 0.0f;
@@ -218,16 +202,6 @@ extern "C" void chassis_control_task()
         {
             disable_all_motors();
         }
-        
-        // 向超级电容发送控制数据
-        uint8_t super_cap_tx_data[8];
-        super_cap.write(super_cap_tx_data, 
-                       chassis_data.chassis_power_limit, 
-                       chassis_data.buffer_energy,
-                       pm02.robot_status.power_management_chassis_output);
-        
-        // 发送超级电容控制指令到CAN总线 (假设使用CAN2，ID 0x300)
-        can2.tx(super_cap.tx_id, super_cap_tx_data);
         
         osDelay(1);  //1000Hz控制频率
     }
