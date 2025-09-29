@@ -15,13 +15,13 @@ extern "C" void can_task()
     can2.start();
     
     while (true) {
-        // 底盘电机控制数据准备
+        // 底盘电机控制命令写入CAN2
         chassis_lf.write(can2.tx_data);
         chassis_lr.write(can2.tx_data);
         chassis_rf.write(can2.tx_data);
         chassis_rr.write(can2.tx_data);
         
-        // 发送底盘电机控制指令 (0x200 = ID 1-4)
+        // 发送底盘电机控制命令 (0x200 = ID 1-4)
         can2.send(0x200);
         
         // 超级电容控制
@@ -31,7 +31,7 @@ extern "C" void can_task()
                        chassis_data.buffer_energy,
                        pm02.robot_status.power_management_chassis_output);
         
-        // 发送超级电容控制指令
+        // 发送超级电容控制命令
         can2.tx_data[0] = super_cap_tx_data[0];
         can2.tx_data[1] = super_cap_tx_data[1];
         can2.tx_data[2] = super_cap_tx_data[2];

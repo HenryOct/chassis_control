@@ -15,7 +15,7 @@ inline sp::RM_Motor chassis_lr(3, sp::RM_Motors::M3508);
 inline sp::RM_Motor chassis_rr(4, sp::RM_Motors::M3508);
 
 // 定义一个麦轮底盘
-// 参数：轮子半径0.076m，前后轮距一半0.15m，左右轮距一半0.15m
+// 参数：轮子半径0.077m，前后轮距一半0.165m，左右轮距一半0.185m
 inline sp::Mecanum mecanum_chassis(0.077f, 0.165f, 0.185f);
 
 // 外部声明，在对应任务中实例化
