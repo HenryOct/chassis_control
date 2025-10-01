@@ -4,7 +4,8 @@
 #include "uart/uart.hpp"
 #include "buzzer_control.hpp"
 #include <cmath>
-#include <cstdlib>  
+#include <cstdlib>
+#include <algorithm>  
 
 ChassisData chassis_data;
 
@@ -13,58 +14,136 @@ static sp::DBusSwitchMode last_sw_r = sp::DBusSwitchMode::MID;  // 上次右拨�
 
 // 功率控制相关常量
 constexpr uint16_t DEFAULT_POWER_LIMIT = 40;   // 默认功率限制 40W
-constexpr uint16_t POWER_BUFFER_THRESHOLD = 20; // 缓冲能量阈值 20J
-constexpr float POWER_SCALE_MIN = 0.3f;        // 最小功率缩放因子
-constexpr float POWER_SCALE_MAX = 1.0f;        // 最大功率缩放因子
+constexpr float POWER_SCALE_MIN = 0.1f;        // 最小功率缩放因子（安全下限）
 
-// 更新功率数据从裁判系统
+// 功率模型参数（需要根据实际测试调整）
+constexpr float K1_TORQUE_LOSS = 2.0f;        // 转矩损耗系数
+constexpr float K2_SPEED_LOSS = 0.01f;        // 角速度损耗系数  
+constexpr float K3_STATIC_POWER = 5.0f;       // 静态待机功耗 W
+
+// 更新功率数据从裁判系统和超级电容
 void update_power_data()
 {
-    // 从PM02裁判系统获取功率限制和缓冲能量
+    // 从PM02裁判系统获取功率限制
     chassis_data.chassis_power_limit = pm02.robot_status.chassis_power_limit;
-    chassis_data.buffer_energy = pm02.power_heat.buffer_energy;
     
     // 如果裁判系统离线，使用默认值
     if (chassis_data.chassis_power_limit == 0) {
         chassis_data.chassis_power_limit = DEFAULT_POWER_LIMIT;
     }
+    
+    // 从超级电容获取实际功率数据
+    chassis_data.power_in = super_cap.power_in;           // 电池输入功率
+    chassis_data.power_out = super_cap.power_out;         // 电容输出功率
+    chassis_data.chassis_actual_power = chassis_data.power_out - chassis_data.power_in;  // 底盘实际功率
+    chassis_data.predicted_power = predict_power_consumption();  // 预测功率
 }
 
-// 计算功率缩放因子
-float calculate_power_scale_factor()
+// 根据功率模型预测输入功率
+float predict_power_consumption()
 {
-    // 基于缓冲能量计算缩放因子
-    if (chassis_data.buffer_energy >= POWER_BUFFER_THRESHOLD) {
-        // 缓冲能量充足，不限制功率
-        return POWER_SCALE_MAX;
-    } else if (chassis_data.buffer_energy <= 5) {
-        // 缓冲能量极低，严格限制功率
-        return POWER_SCALE_MIN;
-    } else {
-        // 线性插值计算缩放因子
-        float scale = POWER_SCALE_MIN + 
-                     (POWER_SCALE_MAX - POWER_SCALE_MIN) * 
-                     (chassis_data.buffer_energy - 5.0f) / (POWER_BUFFER_THRESHOLD - 5.0f);
-        return scale;
-    }
+    // P_in = Σ(τ·ω) + K₁·Σ(τ²) + K₂·Σ(ω²) + K₃
+    
+    // 获取各电机的转矩和角速度
+    float torque_lf = chassis_data.torque_lf;
+    float torque_lr = chassis_data.torque_lr; 
+    float torque_rf = chassis_data.torque_rf;
+    float torque_rr = chassis_data.torque_rr;
+    
+    float speed_lf = chassis_lf.speed;
+    float speed_lr = chassis_lr.speed;
+    float speed_rf = chassis_rf.speed;
+    float speed_rr = chassis_rr.speed;
+    
+    // 计算各项功率分量
+    // 1. 轴功率项：Σ(τ·ω)
+    float shaft_power = torque_lf * speed_lf + torque_lr * speed_lr + 
+                       torque_rf * speed_rf + torque_rr * speed_rr;
+    
+    // 2. 转矩损耗项：K₁·Σ(τ²)
+    float torque_loss = K1_TORQUE_LOSS * (torque_lf * torque_lf + torque_lr * torque_lr +
+                                         torque_rf * torque_rf + torque_rr * torque_rr);
+    
+    // 3. 角速度损耗项：K₂·Σ(ω²)
+    float speed_loss = K2_SPEED_LOSS * (speed_lf * speed_lf + speed_lr * speed_lr +
+                                       speed_rf * speed_rf + speed_rr * speed_rr);
+    
+    // 4. 静态功耗项：K₃
+    float static_power = K3_STATIC_POWER;
+    
+    // 总预测功率
+    float predicted_power = std::abs(shaft_power) + torque_loss + speed_loss + static_power;
+    
+    return predicted_power;
 }
 
-// 应用功率限制
+// 计算转矩缩放系数（基于二次方程求解）
+float calculate_torque_scale_factor()
+{
+    float power_limit = static_cast<float>(chassis_data.chassis_power_limit);
+    float predicted_power = predict_power_consumption();
+    
+    // 如果预测功率不超限，不需要缩放
+    if (predicted_power <= power_limit) {
+        return 1.0f;
+    }
+    
+    // 计算二次方程的系数
+    // 方程：K₁·K²·Σ(τ²) + K·Σ(τ·ω) + (K₂·Σ(ω²) + K₃ - P_max) = 0
+    
+    // 获取各电机数据
+    float torque_lf = chassis_data.torque_lf;
+    float torque_lr = chassis_data.torque_lr; 
+    float torque_rf = chassis_data.torque_rf;
+    float torque_rr = chassis_data.torque_rr;
+    
+    float speed_lf = chassis_lf.speed;
+    float speed_lr = chassis_lr.speed;
+    float speed_rf = chassis_rf.speed;
+    float speed_rr = chassis_rr.speed;
+    
+    // 计算求和项
+    float sum_tau_omega = torque_lf * speed_lf + torque_lr * speed_lr + 
+                         torque_rf * speed_rf + torque_rr * speed_rr;
+    
+    float sum_tau_squared = torque_lf * torque_lf + torque_lr * torque_lr +
+                           torque_rf * torque_rf + torque_rr * torque_rr;
+    
+    float sum_omega_squared = speed_lf * speed_lf + speed_lr * speed_lr +
+                             speed_rf * speed_rf + speed_rr * speed_rr;
+    
+    // 二次方程系数
+    float a = K1_TORQUE_LOSS * sum_tau_squared;
+    float b = sum_tau_omega;
+    float c = K2_SPEED_LOSS * sum_omega_squared + K3_STATIC_POWER - power_limit;
+    
+    // 计算判别式
+    float discriminant = b * b - 4 * a * c;
+    
+    // 判别式小于0，无实数解
+    if (discriminant < 0) {
+        return 1.0f;  // 使用最小缩放作为安全值
+    }
+    
+    // 求解二次方程（取较小的正根）
+    float sqrt_discriminant = std::sqrt(discriminant);
+    float k = (-b + sqrt_discriminant) / (2 * a);
+    return k;
+
+// 应用功率限制（严格按照PDF逻辑）
 void apply_power_limit()
 {
-    // 计算当前功率缩放因子
-    chassis_data.power_scale_factor = calculate_power_scale_factor();
+    // 计算转矩缩放系数
+    chassis_data.power_scale_factor = calculate_torque_scale_factor();
     
     // 判断是否需要激活功率限制
-    chassis_data.power_limit_active = (chassis_data.power_scale_factor < POWER_SCALE_MAX);
+    chassis_data.power_limit_active = (chassis_data.power_scale_factor < 1.0f);
     
-    // 如果功率限制激活，对所有电机扭矩进行缩放
-    if (chassis_data.power_limit_active) {
-        chassis_data.torque_lf *= chassis_data.power_scale_factor;
-        chassis_data.torque_lr *= chassis_data.power_scale_factor;
-        chassis_data.torque_rf *= chassis_data.power_scale_factor;
-        chassis_data.torque_rr *= chassis_data.power_scale_factor;
-    }
+    // 按照PDF：τ' = K × τ，对所有电机扭矩进行缩放
+    chassis_data.torque_lf *= chassis_data.power_scale_factor;
+    chassis_data.torque_lr *= chassis_data.power_scale_factor;
+    chassis_data.torque_rf *= chassis_data.power_scale_factor;
+    chassis_data.torque_rr *= chassis_data.power_scale_factor;
 }
 
 // 禁用所有电机，保证底盘和摩擦轮都不会移动
@@ -131,9 +210,14 @@ extern "C" void chassis_control_task()
     
     // 初始化功率控制数据
     chassis_data.chassis_power_limit = DEFAULT_POWER_LIMIT;
-    chassis_data.buffer_energy = 60;  // 初始缓冲能量设为60J
     chassis_data.power_scale_factor = 1.0f;
     chassis_data.power_limit_active = false;
+    
+    // 初始化超级电容功率数据
+    chassis_data.power_in = 0.0f;
+    chassis_data.power_out = 0.0f;
+    chassis_data.chassis_actual_power = 0.0f;
+    chassis_data.predicted_power = 0.0f;
 
     while (true) {
         // 更新功率数据（从裁判系统获取最新数据）

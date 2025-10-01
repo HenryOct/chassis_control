@@ -61,14 +61,20 @@ struct ChassisData
     
     // 功率控制相关数据
     uint16_t chassis_power_limit;  // 底盘功率限制 W
-    uint16_t buffer_energy;        // 缓冲能量 J
     float power_scale_factor;      // 功率缩放因子 (0.0-1.0)
     bool power_limit_active;       // 功率限制是否激活
+    
+    // 超级电容功率数据
+    float power_in;                // 电池输入功率 W (需要限制的)
+    float power_out;               // 电容输出功率 W
+    float chassis_actual_power;    // 底盘实际功率 W (power_out - power_in)
+    float predicted_power;         // 预测输入功率 W (基于功率模型)
 };
 
 // 功率控制函数声明
 void update_power_data();
 void apply_power_limit();
-float calculate_power_scale_factor();
+float calculate_torque_scale_factor();
+float predict_power_consumption();
 
 #endif // CHASSIS_CONTROL_HPP
