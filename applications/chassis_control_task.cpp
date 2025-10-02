@@ -81,10 +81,12 @@ float predict_power_consumption()
 float calculate_torque_scale_factor()
 {
     float power_limit = static_cast<float>(chassis_data.chassis_power_limit);
-    float predicted_power = predict_power_consumption();
     
-    // 如果预测功率不超限，不需要缩放
-    if (predicted_power <= power_limit) {
+    // 使用超级电容的实际功率进行判断
+    float current_power_in = chassis_data.power_in;
+    
+    // 如果实际功率不超限，不需要缩放
+    if (current_power_in <= power_limit) {
         return 1.0f;
     }
     
@@ -144,6 +146,13 @@ void apply_power_limit()
     chassis_data.torque_lr *= chassis_data.power_scale_factor;
     chassis_data.torque_rf *= chassis_data.power_scale_factor;
     chassis_data.torque_rr *= chassis_data.power_scale_factor;
+    
+    // 额外安全限幅 - 保护机械结构
+    constexpr float MAX_SAFE_TORQUE = 8.0f;  // N·m，根据RM3508规格设定
+    chassis_data.torque_lf = std::max(std::min(chassis_data.torque_lf, MAX_SAFE_TORQUE), -MAX_SAFE_TORQUE);
+    chassis_data.torque_lr = std::max(std::min(chassis_data.torque_lr, MAX_SAFE_TORQUE), -MAX_SAFE_TORQUE);
+    chassis_data.torque_rf = std::max(std::min(chassis_data.torque_rf, MAX_SAFE_TORQUE), -MAX_SAFE_TORQUE);
+    chassis_data.torque_rr = std::max(std::min(chassis_data.torque_rr, MAX_SAFE_TORQUE), -MAX_SAFE_TORQUE);
 }
 
 // 禁用所有电机，保证底盘和摩擦轮都不会移动
@@ -256,6 +265,7 @@ extern "C" void chassis_control_task()
             float raw_vx = remote.ch_lv;
             float raw_vy = remote.ch_lh;
             float raw_right_v = remote.ch_rv;
+    
             
             // 直接线性映射
             float vx = raw_vx * MAX_LINEAR_SPEED;   // 前后移动

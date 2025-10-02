@@ -8,14 +8,14 @@
 #include "referee/pm02/pm02.hpp"
 #include "motor/super_cap/super_cap.hpp"
 
-// 底盘电机实例化
-inline sp::RM_Motor chassis_rf(1, sp::RM_Motors::M3508);
-inline sp::RM_Motor chassis_lf(2, sp::RM_Motors::M3508); 
-inline sp::RM_Motor chassis_lr(3, sp::RM_Motors::M3508);
-inline sp::RM_Motor chassis_rr(4, sp::RM_Motors::M3508);
+// 底盘电机实例化（RM3508电机，减速比14.9，配合C620电调）
+inline sp::RM_Motor chassis_rf(1, sp::RM_Motors::M3508, 14.9f);
+inline sp::RM_Motor chassis_lf(2, sp::RM_Motors::M3508, 14.9f); 
+inline sp::RM_Motor chassis_lr(3, sp::RM_Motors::M3508, 14.9f);
+inline sp::RM_Motor chassis_rr(4, sp::RM_Motors::M3508, 14.9f);
 
 // 定义一个麦轮底盘
-// 参数：轮子半径0.077m，前后轮距一半0.165m，左右轮距一半0.185m
+// 参数：轮子半径77mm(直径154mm)，纵向间距330mm(半距165mm)，横向间距370mm(半距185mm)
 inline sp::Mecanum mecanum_chassis(0.077f, 0.165f, 0.185f);
 
 // 外部声明，在对应任务中实例化
@@ -26,14 +26,14 @@ extern sp::CAN can2;        // can_task.cpp中实例化
 // 超级电容实例化 (自动模式)
 inline sp::SuperCap super_cap(sp::SuperCapMode::AUTOMODE);
 
-// PID参数定义 (极保守设置，确保稳定)
+// PID参数定义 (针对RM3508电机优化，添加安全限幅)
 constexpr float PID_DT = 0.001f;    // 1kHz控制频率
-constexpr float PID_KP = 3.0f;      // 进一步降低比例增益
-constexpr float PID_KI = 0.1f;      // 极小的积分增益
-constexpr float PID_KD = 0.0f;      // 暂时关闭微分项
-constexpr float PID_MO = 2.0f;      // 进一步降低最大输出
-constexpr float PID_MIO = 0.5f;     // 极小的积分限制
-constexpr float PID_ALPHA = 0.5f;   // 更强的D项滤波
+constexpr float PID_KP = 8.0f;      // 比例增益
+constexpr float PID_KI = 0.5f;      // 积分增益
+constexpr float PID_KD = 0.1f;      // 微分增益
+constexpr float PID_MO = 10.0f;     // 最大输出限制 (N·m) - 保护机械结构
+constexpr float PID_MIO = 2.0f;     // 积分输出限制 (N·m)
+constexpr float PID_ALPHA = 0.3f;   // D项滤波系数
 
 //// PID控制器 - 每个轮子一个速度环PID
 //                                    dt     kp    ki    kd    mo   mio   alpha
