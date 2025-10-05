@@ -1,13 +1,10 @@
 #include "cmsis_os.h"
 #include "chassis_control.hpp"
-#include "can/can.hpp"
-#include "uart/uart.hpp"
 #include "buzzer_control.hpp"
 #include <cmath>
 #include <cstdlib>
 #include <algorithm>  
 
-ChassisData chassis_data;
 
 // 右拨杆状态监控变量
 static sp::DBusSwitchMode last_sw_r = sp::DBusSwitchMode::MID;  // 上次右拨杆状态
@@ -131,6 +128,7 @@ float calculate_torque_scale_factor()
     float sqrt_discriminant = std::sqrt(discriminant);
     float k = (-b + sqrt_discriminant) / (2 * a);
     return k;
+}
 
 // 应用功率限制（严格按照PDF逻辑）
 void apply_power_limit()

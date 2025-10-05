@@ -1,12 +1,18 @@
 #ifndef CHASSIS_CONTROL_HPP
 #define CHASSIS_CONTROL_HPP
 
-#include "uart/uart.hpp"
+// 必要的包含
+#include "io/dbus/dbus.hpp"
+#include "io/can/can.hpp"
 #include "tools/mecanum/mecanum.hpp"
 #include "tools/pid/pid.hpp"
 #include "motor/rm_motor/rm_motor.hpp"
 #include "referee/pm02/pm02.hpp"
 #include "motor/super_cap/super_cap.hpp"
+
+// 任务函数声明
+extern "C" void can_task(void const * argument);
+extern "C" void uart_task(void const * argument);
 
 // 底盘电机实例化（RM3508电机，减速比14.9，配合C620电调）
 inline sp::RM_Motor chassis_rf(1, sp::RM_Motors::M3508, 14.9f);
@@ -17,30 +23,6 @@ inline sp::RM_Motor chassis_rr(4, sp::RM_Motors::M3508, 14.9f);
 // 定义一个麦轮底盘
 // 参数：轮子半径77mm(直径154mm)，纵向间距330mm(半距165mm)，横向间距370mm(半距185mm)
 inline sp::Mecanum mecanum_chassis(0.077f, 0.165f, 0.185f);
-
-// 外部声明，在对应任务中实例化
-extern sp::DBus remote;     // uart_task.cpp中实例化
-extern sp::PM02 pm02;       // uart_task.cpp中实例化
-extern sp::CAN can2;        // can_task.cpp中实例化
-
-// 超级电容实例化 (自动模式)
-inline sp::SuperCap super_cap(sp::SuperCapMode::AUTOMODE);
-
-// PID参数定义 (针对RM3508电机优化，添加安全限幅)
-constexpr float PID_DT = 0.001f;    // 1kHz控制频率
-constexpr float PID_KP = 8.0f;      // 比例增益
-constexpr float PID_KI = 0.5f;      // 积分增益
-constexpr float PID_KD = 0.1f;      // 微分增益
-constexpr float PID_MO = 10.0f;     // 最大输出限制 (N·m) - 保护机械结构
-constexpr float PID_MIO = 2.0f;     // 积分输出限制 (N·m)
-constexpr float PID_ALPHA = 0.3f;   // D项滤波系数
-
-//// PID控制器 - 每个轮子一个速度环PID
-//                                    dt     kp    ki    kd    mo   mio   alpha
-inline sp::PID chassis_lf_pid(PID_DT, PID_KP, PID_KI, PID_KD, PID_MO, PID_MIO, PID_ALPHA);
-inline sp::PID chassis_lr_pid(PID_DT, PID_KP, PID_KI, PID_KD, PID_MO, PID_MIO, PID_ALPHA);
-inline sp::PID chassis_rf_pid(PID_DT, PID_KP, PID_KI, PID_KD, PID_MO, PID_MIO, PID_ALPHA);
-inline sp::PID chassis_rr_pid(PID_DT, PID_KP, PID_KI, PID_KD, PID_MO, PID_MIO, PID_ALPHA);
 
 // 底盘控制结构体
 struct ChassisData
@@ -70,6 +52,33 @@ struct ChassisData
     float chassis_actual_power;    // 底盘实际功率 W (power_out - power_in)
     float predicted_power;         // 预测输入功率 W (基于功率模型)
 };
+
+// 外部声明，在对应任务中实例化
+extern sp::DBus remote;     // uart_task.cpp中实例化
+extern sp::PM02 pm02;       // uart_task.cpp中实例化
+extern sp::CAN can2;        // can_task.cpp中实例化
+
+// 底盘数据实例
+extern ChassisData chassis_data;
+
+// 超级电容实例化 (自动模式)
+inline sp::SuperCap super_cap(sp::SuperCapMode::AUTOMODE);
+
+// PID参数定义 (针对RM3508电机优化，添加安全限幅)
+constexpr float PID_DT = 0.001f;    // 1kHz控制频率
+constexpr float PID_KP = 8.0f;      // 比例增益
+constexpr float PID_KI = 0.5f;      // 积分增益
+constexpr float PID_KD = 0.1f;      // 微分增益
+constexpr float PID_MO = 10.0f;     // 最大输出限制 (N·m) - 保护机械结构
+constexpr float PID_MIO = 2.0f;     // 积分输出限制 (N·m)
+constexpr float PID_ALPHA = 0.3f;   // D项滤波系数
+
+//// PID控制器 - 每个轮子一个速度环PID
+//                                    dt     kp    ki    kd    mo   mio   alpha
+inline sp::PID chassis_lf_pid(PID_DT, PID_KP, PID_KI, PID_KD, PID_MO, PID_MIO, PID_ALPHA);
+inline sp::PID chassis_lr_pid(PID_DT, PID_KP, PID_KI, PID_KD, PID_MO, PID_MIO, PID_ALPHA);
+inline sp::PID chassis_rf_pid(PID_DT, PID_KP, PID_KI, PID_KD, PID_MO, PID_MIO, PID_ALPHA);
+inline sp::PID chassis_rr_pid(PID_DT, PID_KP, PID_KI, PID_KD, PID_MO, PID_MIO, PID_ALPHA);
 
 // 功率控制函数声明
 void update_power_data();

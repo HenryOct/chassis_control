@@ -52,6 +52,8 @@ osThreadId ledTaskHandle;
 osThreadId buzzerTaskHandle;
 osThreadId chassis_controlTaskHandle;
 osThreadId plotTaskHandle;
+osThreadId canTaskHandle;
+osThreadId uartTaskHandle;
 
 /* Private function prototypes -----------------------------------------------*/
 /* USER CODE BEGIN FunctionPrototypes */
@@ -63,6 +65,8 @@ extern void led_task(void const * argument);
 extern void buzzer_task(void const * argument);
 extern void chassis_control_task(void const * argument);
 extern void plot_task(void const * argument);
+extern void can_task(void const * argument);
+extern void uart_task(void const * argument);
 
 extern void MX_USB_DEVICE_Init(void);
 void MX_FREERTOS_Init(void); /* (MISRA C 2004 rule 8.1) */
@@ -129,6 +133,14 @@ void MX_FREERTOS_Init(void) {
   /* definition and creation of plotTask */
   osThreadDef(plotTask, plot_task, osPriorityHigh, 0, 128);
   plotTaskHandle = osThreadCreate(osThread(plotTask), NULL);
+
+  /* definition and creation of canTask */
+  osThreadDef(canTask, can_task, osPriorityHigh, 0, 256);
+  canTaskHandle = osThreadCreate(osThread(canTask), NULL);
+
+  /* definition and creation of uartTask */
+  osThreadDef(uartTask, uart_task, osPriorityHigh, 0, 256);
+  uartTaskHandle = osThreadCreate(osThread(uartTask), NULL);
 
   /* USER CODE BEGIN RTOS_THREADS */
   /* add threads, ... */

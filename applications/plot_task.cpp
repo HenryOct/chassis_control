@@ -1,7 +1,5 @@
 #include "cmsis_os.h"
 #include "io/plotter/plotter.hpp"
-#include "can/can.hpp"
-#include "uart/uart.hpp"
 #include "chassis_control.hpp"  // 包含底盘电机定义
 
 sp::Plotter plotter(&huart1);

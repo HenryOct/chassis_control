@@ -1,15 +1,22 @@
 #include "cmsis_os.h"
-#include "io/can/can.hpp"
-#include "chassis_control.hpp"
 #include "can.h"
+#include "io/can/can.hpp"
+#include "motor/rm_motor/rm_motor.hpp"
+#include "motor/super_cap/super_cap.hpp"
+#include "referee/pm02/pm02.hpp"
+#include "chassis_control.hpp"
 
-// CAN2实例化
+// CAN2句柄声明
 extern CAN_HandleTypeDef hcan2;
+
+// 定义extern变量
 sp::CAN can2(&hcan2);
+ChassisData chassis_data;
 
 // 按照sp_middleware标准创建CAN任务
-extern "C" void can_task()
+extern "C" void can_task(void const * argument)
 {
+    
     // 配置和启动CAN2
     can2.config();
     can2.start();
@@ -28,7 +35,7 @@ extern "C" void can_task()
         uint8_t super_cap_tx_data[8];
         super_cap.write(super_cap_tx_data, 
                        chassis_data.chassis_power_limit, 
-                       chassis_data.buffer_energy,
+                       pm02.power_heat.buffer_energy,
                        pm02.robot_status.power_management_chassis_output);
         
         // 发送超级电容控制命令

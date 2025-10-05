@@ -13,7 +13,7 @@ sp::DBus remote(&huart3);
 // PM02裁判系统实例 (C板使用huart6)
 sp::PM02 pm02(&huart6);
 
-extern "C" void uart_task()
+extern "C" void uart_task(void const * argument)
 {
     // 初始化遥控器
     remote.request();
@@ -33,7 +33,7 @@ extern "C" void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef * huart, uint16_t 
     auto stamp_ms = osKernelSysTick();
 
     // 遥控器数据接收处理 (UART3)
-    if (huart == remote.huart) {
+    if (huart == &huart3) {
         remote.update(Size, stamp_ms);
         remote.request();
     }
@@ -49,7 +49,7 @@ extern "C" void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef * huart, uint16_t 
 extern "C" void HAL_UART_ErrorCallback(UART_HandleTypeDef * huart)
 {
     // 遥控器错误处理
-    if (huart == remote.huart) {
+    if (huart == &huart3) {
         remote.request();
     }
     
