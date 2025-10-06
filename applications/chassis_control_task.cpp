@@ -146,7 +146,7 @@ void apply_power_limit()
     chassis_data.torque_rr *= chassis_data.power_scale_factor;
     
     // 额外安全限幅 - 保护机械结构
-    constexpr float MAX_SAFE_TORQUE = 8.0f;  // N·m，根据RM3508规格设定
+    constexpr float MAX_SAFE_TORQUE = 8.0f;
     chassis_data.torque_lf = std::max(std::min(chassis_data.torque_lf, MAX_SAFE_TORQUE), -MAX_SAFE_TORQUE);
     chassis_data.torque_lr = std::max(std::min(chassis_data.torque_lr, MAX_SAFE_TORQUE), -MAX_SAFE_TORQUE);
     chassis_data.torque_rf = std::max(std::min(chassis_data.torque_rf, MAX_SAFE_TORQUE), -MAX_SAFE_TORQUE);
