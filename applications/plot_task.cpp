@@ -35,7 +35,6 @@ extern "C" void plot_task()
     float speed_loss = K2_SPEED_LOSS * (speed_lf * speed_lf + speed_lr * speed_lr +
                                        speed_rf * speed_rf + speed_rr * speed_rr);
                                       
-    float static_power = K3_STATIC_POWER;
     
     // 使用plotter.plot()发送功率数据到SerialPlot (最多10个通道)
     plotter.plot(
