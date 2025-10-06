@@ -39,7 +39,7 @@ extern "C" void plot_task()
     // 使用plotter.plot()发送功率数据到SerialPlot (最多10个通道)
     plotter.plot(
         test_counter,                         // 通道1: 测试信号 (应该看到递增的锯齿波)
-        chassis_data.power_in,                // 通道2: 电池输入功率 (实际测量值)
+        (chassis_data.power_out-chassis_data.power_in),                // 通道2: 电池输入功率 (实际测量值)
         chassis_data.predicted_power,         // 通道3: 预测功率 (模型计算值)
         shaft_power,                          // 通道4: 轴功率分量 Σ(τ·ω)
         torque_loss,                          // 通道5: 转矩损耗分量 K₁·Σ(τ²)

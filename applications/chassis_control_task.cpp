@@ -5,13 +5,36 @@
 #include <cstdlib>
 #include <algorithm>  
 
-
-// 右拨杆状态监控变量
-static sp::DBusSwitchMode last_sw_r = sp::DBusSwitchMode::MID;  // 上次右拨杆状态
+// ============================================================================
+// 可调参数常量定义区域 - 所有需要调整的参数都集中在这里
+// ============================================================================
 
 // 功率控制相关常量
 constexpr uint16_t DEFAULT_POWER_LIMIT = 60;   // 默认功率限制 60W
 constexpr float POWER_SCALE_MIN = 0.1f;        // 最小功率缩放因子（安全下限）
+
+// 运动控制参数
+constexpr float MAX_LINEAR_SPEED = 2.0f;       // 最大线速度 m/s，前后左右各2m/s
+constexpr float ROTATION_SPEED = 5.0f;         // 固定转向速度 rad/s
+
+// 安全保护参数
+constexpr float MAX_SAFE_TORQUE = 8.0f;       // 最大安全转矩 N·m，保护机械结构
+
+// 任务控制参数
+constexpr uint32_t CONTROL_FREQUENCY_HZ = 1000;  // 控制频率 1000Hz
+constexpr uint32_t CONTROL_PERIOD_MS = 1;        // 控制周期 1ms
+constexpr uint32_t OFFLINE_DELAY_MS = 10;        // 遥控器离线时的延时 10ms
+
+// ============================================================================
+// 全局变量定义区域
+// ============================================================================
+
+// 右拨杆状态监控变量
+static sp::DBusSwitchMode last_sw_r = sp::DBusSwitchMode::MID;  // 上次右拨杆状态
+
+// ============================================================================
+// 函数实现区域
+// ============================================================================
 
 // 从裁判系统和超级电容更新功率参数
 void update_power_data()
@@ -116,7 +139,7 @@ float calculate_torque_scale_factor()
     
     // 判别式小于0，无实数解
     if (discriminant < 0) {
-        return 1.0f;  // 使用最小缩放作为安全值
+        return POWER_SCALE_MIN;  // 使用最小缩放作为安全值
     }
     
     // 求解二次方程（取较小的正根）
@@ -141,7 +164,6 @@ void apply_power_limit()
     chassis_data.torque_rr *= chassis_data.power_scale_factor;
     
     // 额外安全限幅 - 保护机械结构
-    constexpr float MAX_SAFE_TORQUE = 8.0f;
     chassis_data.torque_lf = std::max(std::min(chassis_data.torque_lf, MAX_SAFE_TORQUE), -MAX_SAFE_TORQUE);
     chassis_data.torque_lr = std::max(std::min(chassis_data.torque_lr, MAX_SAFE_TORQUE), -MAX_SAFE_TORQUE);
     chassis_data.torque_rf = std::max(std::min(chassis_data.torque_rf, MAX_SAFE_TORQUE), -MAX_SAFE_TORQUE);
@@ -181,32 +203,11 @@ void chassis_move_control(float vx, float vy, float wz)
     chassis_data.speed_rf_set = mecanum_chassis.speed_rf;
     chassis_data.speed_rr_set = mecanum_chassis.speed_rr;
     
-    // 死区控制：当目标速度很小时，直接设为0，避免抖动
-    constexpr float SPEED_DEADZONE = 0.5f;  // 速度死区 rad/s
-
-    float target_lf = (std::abs(chassis_data.speed_lf_set) < SPEED_DEADZONE) ? 0.0f : chassis_data.speed_lf_set;
-    float target_lr = (std::abs(chassis_data.speed_lr_set) < SPEED_DEADZONE) ? 0.0f : chassis_data.speed_lr_set;
-    float target_rf = (std::abs(chassis_data.speed_rf_set) < SPEED_DEADZONE) ? 0.0f : chassis_data.speed_rf_set;
-    float target_rr = (std::abs(chassis_data.speed_rr_set) < SPEED_DEADZONE) ? 0.0f : chassis_data.speed_rr_set;
-    
-    // 检查是否所有目标速度都为0（底盘停止）
-    bool chassis_stopped = (target_lf == 0.0f && target_lr == 0.0f && 
-                           target_rf == 0.0f && target_rr == 0.0f);
-    
-    // 如果底盘停止，清零积分项防止积分饱和
-    if (chassis_stopped) {
-        chassis_lf_pid.data.iout = 0.0f;
-        chassis_lr_pid.data.iout = 0.0f;
-        chassis_rf_pid.data.iout = 0.0f;
-        chassis_rr_pid.data.iout = 0.0f;
-    }
-    
-    // 完整的PID速度闭环控制 (使用积分分离，防止积分饱和)
-    constexpr float INTEGRAL_PAUSE_THRESHOLD = 0.5f;  // P项输出超过0.5时暂停积分
-    chassis_lf_pid.calc(target_lf, chassis_lf.speed, INTEGRAL_PAUSE_THRESHOLD);
-    chassis_lr_pid.calc(target_lr, chassis_lr.speed, INTEGRAL_PAUSE_THRESHOLD);
-    chassis_rf_pid.calc(target_rf, chassis_rf.speed, INTEGRAL_PAUSE_THRESHOLD);
-    chassis_rr_pid.calc(target_rr, chassis_rr.speed, INTEGRAL_PAUSE_THRESHOLD);
+    // 简单的PID速度闭环控制
+    chassis_lf_pid.calc(chassis_data.speed_lf_set, chassis_lf.speed);
+    chassis_lr_pid.calc(chassis_data.speed_lr_set, chassis_lr.speed);
+    chassis_rf_pid.calc(chassis_data.speed_rf_set, chassis_rf.speed);
+    chassis_rr_pid.calc(chassis_data.speed_rr_set, chassis_rr.speed);
     
     // 使用PID输出值
     chassis_data.torque_lf = chassis_lf_pid.out;
@@ -214,12 +215,6 @@ void chassis_move_control(float vx, float vy, float wz)
     chassis_data.torque_rf = chassis_rf_pid.out;
     chassis_data.torque_rr = chassis_rr_pid.out;
     
-    // 输出死区：当转矩很小时，直接设为0
-    constexpr float TORQUE_DEADZONE = 0.2f;  // 转矩死区 N·m
-    if (std::abs(chassis_data.torque_lf) < TORQUE_DEADZONE) chassis_data.torque_lf = 0.0f;
-    if (std::abs(chassis_data.torque_lr) < TORQUE_DEADZONE) chassis_data.torque_lr = 0.0f;
-    if (std::abs(chassis_data.torque_rf) < TORQUE_DEADZONE) chassis_data.torque_rf = 0.0f;
-    if (std::abs(chassis_data.torque_rr) < TORQUE_DEADZONE) chassis_data.torque_rr = 0.0f;
     
     // 应用功率限制
     //apply_power_limit();
@@ -233,21 +228,8 @@ void chassis_move_control(float vx, float vy, float wz)
 
 extern "C" void chassis_control_task()
 {
-    // 初始化底盘数据
-    chassis_data.vx_set = 0.0f;
-    chassis_data.vy_set = 0.0f;
-    chassis_data.wz_set = 0.0f;
-    
-    // 初始化功率控制数据
+    // 简单的初始化
     chassis_data.chassis_power_limit = DEFAULT_POWER_LIMIT;
-    chassis_data.power_scale_factor = 1.0f;
-    chassis_data.power_limit_active = false;
-    
-    // 初始化超级电容功率数据
-    chassis_data.power_in = 0.0f;
-    chassis_data.power_out = 0.0f;
-    chassis_data.chassis_actual_power = 0.0f;
-    chassis_data.predicted_power = 0.0f;
 
     while (true) {
         // 更新功率数据（从裁判系统获取最新数据）
@@ -258,7 +240,7 @@ extern "C" void chassis_control_task()
         {
             // 遥控器离线，禁用所有电机
             disable_all_motors();
-            osDelay(10);
+            osDelay(OFFLINE_DELAY_MS);
             continue;
         }
         
@@ -277,21 +259,10 @@ extern "C" void chassis_control_task()
         // 右拨杆中档：底盘控制模式  
         if (remote.sw_r == sp::DBusSwitchMode::MID) 
         {
-            
-            // 完整的PID控制底盘
-            const float MAX_LINEAR_SPEED = 2.0f;   // 最大线速度 m/s，前后左右各2m/s
-            const float ROTATION_SPEED = 5.0f;     // 固定转向速度 2rad/s
-            
             // 直接获取摇杆输入值
             float raw_vx = remote.ch_lv;
             float raw_vy = remote.ch_lh;
             float raw_right_v = remote.ch_rv;
-            
-            // 遥控器输入死区，避免微小输入导致抖动
-            constexpr float RC_DEADZONE = 0.05f;  // 遥控器死区 (5%)
-            if (std::abs(raw_vx) < RC_DEADZONE) raw_vx = 0.0f;
-            if (std::abs(raw_vy) < RC_DEADZONE) raw_vy = 0.0f;
-            if (std::abs(raw_right_v) < RC_DEADZONE) raw_right_v = 0.0f;
             
             // 直接线性映射
             float vx = raw_vx * MAX_LINEAR_SPEED;   // 前后移动
@@ -299,9 +270,6 @@ extern "C" void chassis_control_task()
             
             // 获取右摇杆左右值
             float raw_right_h = remote.ch_rh;
-            
-            // 右摇杆也应用死区
-            if (std::abs(raw_right_h) < RC_DEADZONE) raw_right_h = 0.0f;
             
             // 计算旋转速度：右摇杆前后控制向左转，左右控制向右转
             float wz = 0.0f;
@@ -320,12 +288,12 @@ extern "C" void chassis_control_task()
         {
             disable_all_motors();
         }
-        // bó gan bu zai zhi禁用所有电机
+        // 拨杆不在指定位置时禁用所有电机
         else 
         {
             disable_all_motors();
         }
         
-        osDelay(1);  //1000Hz控制频率
+        osDelay(CONTROL_PERIOD_MS);  // 1000Hz控制频率
     }
 }
