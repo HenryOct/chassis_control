@@ -13,9 +13,7 @@ static sp::DBusSwitchMode last_sw_r = sp::DBusSwitchMode::MID;  // 上次右拨�
 constexpr uint16_t DEFAULT_POWER_LIMIT = 60;   // 默认功率限制 60W
 constexpr float POWER_SCALE_MIN = 0.1f;        // 最小功率缩放因子（安全下限）
 
-// 功率模型参数在 chassis_control.hpp 中定义
-
-// 更新功率数据从裁判系统和超级电容
+// 从裁判系统和超级电容更新功率参数
 void update_power_data()
 {
     // 从PM02裁判系统获取功率限制
@@ -164,8 +162,6 @@ void disable_all_motors()
     chassis_lr.cmd(0.0f);
     chassis_rf.cmd(0.0f);
     chassis_rr.cmd(0.0f);
-    
-    // 注意：PID类没有reset方法，积分项会在下次calc时自然清零
 }
 
 // 底盘移动控制
@@ -186,18 +182,31 @@ void chassis_move_control(float vx, float vy, float wz)
     chassis_data.speed_rr_set = mecanum_chassis.speed_rr;
     
     // 死区控制：当目标速度很小时，直接设为0，避免抖动
-    constexpr float SPEED_DEADZONE = 0.1f;  // 速度死区 rad/s
-    
+    constexpr float SPEED_DEADZONE = 0.5f;  // 速度死区 rad/s
+
     float target_lf = (std::abs(chassis_data.speed_lf_set) < SPEED_DEADZONE) ? 0.0f : chassis_data.speed_lf_set;
     float target_lr = (std::abs(chassis_data.speed_lr_set) < SPEED_DEADZONE) ? 0.0f : chassis_data.speed_lr_set;
     float target_rf = (std::abs(chassis_data.speed_rf_set) < SPEED_DEADZONE) ? 0.0f : chassis_data.speed_rf_set;
     float target_rr = (std::abs(chassis_data.speed_rr_set) < SPEED_DEADZONE) ? 0.0f : chassis_data.speed_rr_set;
     
-    // 完整的PID速度闭环控制
-    chassis_lf_pid.calc(target_lf, chassis_lf.speed);
-    chassis_lr_pid.calc(target_lr, chassis_lr.speed);
-    chassis_rf_pid.calc(target_rf, chassis_rf.speed);
-    chassis_rr_pid.calc(target_rr, chassis_rr.speed);
+    // 检查是否所有目标速度都为0（底盘停止）
+    bool chassis_stopped = (target_lf == 0.0f && target_lr == 0.0f && 
+                           target_rf == 0.0f && target_rr == 0.0f);
+    
+    // 如果底盘停止，清零积分项防止积分饱和
+    if (chassis_stopped) {
+        chassis_lf_pid.data.iout = 0.0f;
+        chassis_lr_pid.data.iout = 0.0f;
+        chassis_rf_pid.data.iout = 0.0f;
+        chassis_rr_pid.data.iout = 0.0f;
+    }
+    
+    // 完整的PID速度闭环控制 (使用积分分离，防止积分饱和)
+    constexpr float INTEGRAL_PAUSE_THRESHOLD = 0.5f;  // P项输出超过0.5时暂停积分
+    chassis_lf_pid.calc(target_lf, chassis_lf.speed, INTEGRAL_PAUSE_THRESHOLD);
+    chassis_lr_pid.calc(target_lr, chassis_lr.speed, INTEGRAL_PAUSE_THRESHOLD);
+    chassis_rf_pid.calc(target_rf, chassis_rf.speed, INTEGRAL_PAUSE_THRESHOLD);
+    chassis_rr_pid.calc(target_rr, chassis_rr.speed, INTEGRAL_PAUSE_THRESHOLD);
     
     // 使用PID输出值
     chassis_data.torque_lf = chassis_lf_pid.out;
@@ -242,7 +251,7 @@ extern "C" void chassis_control_task()
 
     while (true) {
         // 更新功率数据（从裁判系统获取最新数据）
-        //update_power_data();
+        update_power_data();
         
         // 循环检查遥控器是否在线
         if (!remote.is_alive(HAL_GetTick())) 

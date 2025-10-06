@@ -49,7 +49,7 @@ extern "C" void can_task(void const * argument)
         can2.tx_data[7] = super_cap_tx_data[7];
         can2.send(super_cap.tx_id);
         
-        osDelay(1); // 1000Hz
+        osDelay(2); // 500Hz - 降低频率减少通信负载
     }
 }
 
