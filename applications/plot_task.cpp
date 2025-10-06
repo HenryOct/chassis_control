@@ -10,6 +10,10 @@ sp::Plotter plotter(&huart1);
 extern "C" void plot_task()
 {
   while (true) {
+    // 简单测试数据，确保串口通信正常
+    static float test_counter = 0.0f;
+    test_counter += 0.1f;
+    
     // 计算功率模型各分量用于调试
     float torque_lf = chassis_data.torque_lf;
     float torque_lr = chassis_data.torque_lr; 
@@ -21,28 +25,30 @@ extern "C" void plot_task()
     float speed_rf = chassis_rf.speed;
     float speed_rr = chassis_rr.speed;
     
-    // 计算各项功率分量
+    // 计算各项功率分量 (使用头文件中的实际参数)
     float shaft_power = torque_lf * speed_lf + torque_lr * speed_lr + 
                        torque_rf * speed_rf + torque_rr * speed_rr;
     
-    float torque_loss = 2.0f * (torque_lf * torque_lf + torque_lr * torque_lr +
-                               torque_rf * torque_rf + torque_rr * torque_rr);
+    float torque_loss = K1_TORQUE_LOSS * (torque_lf * torque_lf + torque_lr * torque_lr +
+                                         torque_rf * torque_rf + torque_rr * torque_rr);
     
-    float speed_loss = 0.01f * (speed_lf * speed_lf + speed_lr * speed_lr +
-                               speed_rf * speed_rf + speed_rr * speed_rr);
+    float speed_loss = K2_SPEED_LOSS * (speed_lf * speed_lf + speed_lr * speed_lr +
+                                       speed_rf * speed_rf + speed_rr * speed_rr);
+                                      
+    float static_power = K3_STATIC_POWER;
     
-    float static_power = 5.0f;
-    
-    // 使用plotter.plot()发送功率数据到SerialPlot
+    // 使用plotter.plot()发送功率数据到SerialPlot (最多10个通道)
     plotter.plot(
-        chassis_data.power_in,                // 电池输入功率 (实际测量值)
-        chassis_data.predicted_power,         // 预测功率 (模型计算值)
-        chassis_data.chassis_actual_power,    // 实际功率 (power_out - power_in)
-        shaft_power,                          // 轴功率分量 Σ(τ·ω)
-        torque_loss,                          // 转矩损耗分量 K₁·Σ(τ²)
-        speed_loss,                           // 速度损耗分量 K₂·Σ(ω²)
-        static_power,                         // 静态功耗分量 K₃
-        chassis_data.power_scale_factor       // 功率缩放系数
+        test_counter,                         // 通道1: 测试信号 (应该看到递增的锯齿波)
+        chassis_data.power_in,                // 通道2: 电池输入功率 (实际测量值)
+        chassis_data.predicted_power,         // 通道3: 预测功率 (模型计算值)
+        shaft_power,                          // 通道4: 轴功率分量 Σ(τ·ω)
+        torque_loss,                          // 通道5: 转矩损耗分量 K₁·Σ(τ²)
+        speed_loss,                           // 通道6: 速度损耗分量 K₂·Σ(ω²)
+        speed_lf,                             // 通道7: 左前轮速度 (用于调试抖动)
+        speed_lr,                             // 通道8: 左后轮速度
+        speed_rf,                             // 通道9: 右前轮速度
+        speed_rr                              // 通道10: 右后轮速度
     );
     
     osDelay(10);  // 100Hz - SerialPlot适合的采样频率
