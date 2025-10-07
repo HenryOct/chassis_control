@@ -23,7 +23,7 @@ extern "C" void uart_task(void const * argument)
     
     while (true) {
         // UART任务主要负责初始化，数据处理在中断中完成
-        osDelay(10);
+        osDelay(1);
     }
 }
 

@@ -62,21 +62,21 @@ extern sp::CAN can2;        // can_task.cpp中实例化
 extern ChassisData chassis_data;
 
 // 超级电容实例化 (自动模式)
-inline sp::SuperCap super_cap(sp::SuperCapMode::AUTOMODE);
+inline sp::SuperCap super_cap(sp::SuperCapMode::DISCHARGE_DISOUTPUT);
 
 // PID参数定义 (简化版本，移除复杂滤波)
 constexpr float PID_DT = 0.001f;    // 1000Hz控制频率
 constexpr float PID_KP = 0.5f;      // 比例增益
 constexpr float PID_KI = 0.05f;      // 积分增益
-constexpr float PID_KD = 0.0f;      // 微分增益
-constexpr float PID_MO = 10.0f;     // 最大输出限制 (N·m) - 保护机械结构
-constexpr float PID_MIO = 5.0f;     // 积分输出限制 (N·m)
+constexpr float PID_KD = 0.01f;      // 微分增益
+constexpr float PID_MO = 2.5f;     // 最大输出限制 (N·m) - 保护机械结构
+constexpr float PID_MIO = 1.0f;     // 积分输出限制 (N·m)
 constexpr float PID_ALPHA = 0.0f;   // D项滤波系数 (不使用滤波)
 
 // 功率模型参数（需要根据实际测试调整）
-constexpr float K1_TORQUE_LOSS = 2.2f;        // 转矩损耗系数
-constexpr float K2_SPEED_LOSS = 0.008f;        // 角速度损耗系数  
-constexpr float K3_STATIC_POWER = 3.7f;       // 静态待机功耗 W
+constexpr float K1_TORQUE_LOSS = 2.37f;        // 转矩损耗系数
+constexpr float K2_SPEED_LOSS = 0.015f;        // 角速度损耗系数  
+constexpr float K3_STATIC_POWER = 3.2f;       // 静态待机功耗 W
 
 // PID控制器 - 每个轮子一个速度环PID
 //                                    dt     kp    ki    kd    mo   mio   alpha

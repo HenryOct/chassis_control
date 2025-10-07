@@ -10,7 +10,7 @@
 // ============================================================================
 
 // 功率控制相关常量
-constexpr uint16_t DEFAULT_POWER_LIMIT = 60;   // 默认功率限制 60W
+constexpr uint16_t DEFAULT_POWER_LIMIT = 100;   // 默认功率限制 60W
 constexpr float POWER_SCALE_MIN = 0.1f;        // 最小功率缩放因子（安全下限）
 
 // 运动控制参数
@@ -87,7 +87,7 @@ float predict_power_consumption()
     float static_power = K3_STATIC_POWER;
     
     // 总预测功率
-    float predicted_power = std::abs(shaft_power) + torque_loss + speed_loss + static_power;
+    float predicted_power = shaft_power + torque_loss + speed_loss + static_power;
     
     return predicted_power;
 }
@@ -266,7 +266,7 @@ extern "C" void chassis_control_task()
             
             // 直接线性映射
             float vx = raw_vx * MAX_LINEAR_SPEED;   // 前后移动
-            float vy = raw_vy * MAX_LINEAR_SPEED;   // 左右移动
+            float vy = (-raw_vy) * MAX_LINEAR_SPEED;   // 左右移动
             
             // 获取右摇杆左右值
             float raw_right_h = remote.ch_rh;
