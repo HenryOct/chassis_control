@@ -6,50 +6,38 @@
 #include "referee/pm02/pm02.hpp"
 #include "chassis_control.hpp"
 
-// CAN2句柄声明
 extern CAN_HandleTypeDef hcan2;
 
-// 定义extern变量
 sp::CAN can2(&hcan2);
 ChassisData chassis_data;
 
-// 按照sp_middleware标准创建CAN任务
+// CAN任务，处理电机和超级电容通信
 extern "C" void can_task(void const * argument)
 {
-    
-    // 配置和启动CAN2
     can2.config();
     can2.start();
     
     while (true) {
-        // 底盘电机控制命令写入CAN2
+        // 发送底盘电机控制命令
         chassis_lf.write(can2.tx_data);
         chassis_lr.write(can2.tx_data);
         chassis_rf.write(can2.tx_data);
         chassis_rr.write(can2.tx_data);
-        
-        // 发送底盘电机控制命令 (0x200 = ID 1-4)
         can2.send(0x200);
         
-        // 超级电容控制
+        // 发送超级电容控制命令
         uint8_t super_cap_tx_data[8];
         super_cap.write(super_cap_tx_data, 
                        chassis_data.chassis_power_limit, 
                        pm02.power_heat.buffer_energy,
                        pm02.robot_status.power_management_chassis_output);
         
-        // 发送超级电容控制命令
-        can2.tx_data[0] = super_cap_tx_data[0];
-        can2.tx_data[1] = super_cap_tx_data[1];
-        can2.tx_data[2] = super_cap_tx_data[2];
-        can2.tx_data[3] = super_cap_tx_data[3];
-        can2.tx_data[4] = super_cap_tx_data[4];
-        can2.tx_data[5] = super_cap_tx_data[5];
-        can2.tx_data[6] = super_cap_tx_data[6];
-        can2.tx_data[7] = super_cap_tx_data[7];
+        for (int i = 0; i < 8; i++) {
+            can2.tx_data[i] = super_cap_tx_data[i];
+        }
         can2.send(super_cap.tx_id);
         
-        osDelay(1); // 1000Hz
+        osDelay(1);
     }
 }
 

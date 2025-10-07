@@ -62,7 +62,7 @@ extern sp::CAN can2;        // can_task.cpp中实例化
 extern ChassisData chassis_data;
 
 // 超级电容实例化 (自动模式)
-inline sp::SuperCap super_cap(sp::SuperCapMode::DISCHARGE_DISOUTPUT);
+inline sp::SuperCap super_cap(sp::SuperCapMode::AUTOMODE);
 
 // PID参数定义 (简化版本，移除复杂滤波)
 constexpr float PID_DT = 0.001f;    // 1000Hz控制频率
