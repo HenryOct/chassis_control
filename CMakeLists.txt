@@ -49,6 +49,7 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
     applications/chassis_control_task.cpp
     applications/led_task.cpp
     applications/buzzer_task.cpp
+    applications/servo_task.cpp
     applications/chassis_control.hpp
     applications/buzzer_control.hpp
     applications/plot_task.cpp
@@ -58,6 +59,7 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
     sp_middleware/io/can/can.cpp
     sp_middleware/io/dbus/dbus.cpp
     sp_middleware/io/led/led.cpp
+    sp_middleware/io/servo/servo.cpp
 
     sp_middleware/motor/dm_motor/dm_motor.cpp
     sp_middleware/motor/lk_motor/lk_motor.cpp
