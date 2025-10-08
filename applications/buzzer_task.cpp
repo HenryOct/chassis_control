@@ -39,6 +39,28 @@ void play_startup_sound() {
     }
 }
 
+// 播放左拨杆升调音效（更高音调）
+void play_left_switch_up_sound() {
+    for (int i = 0; i < 3; i++) {
+        buzzer.start();
+        buzzer.set(1200 + 400 * i, 0.01);  // 比右拨杆更高的频率
+        osDelay(60);  // 更短的持续时间，更清脆
+        buzzer.stop();
+        osDelay(15);
+    }
+}
+
+// 播放左拨杆降调音效（更低音调）
+void play_left_switch_down_sound() {
+    for (int i = 0; i < 3; i++) {
+        buzzer.start();
+        buzzer.set(600 - 150 * i, 0.01);  // 比右拨杆更低的频率
+        osDelay(100);  // 更长的持续时间，更沉稳
+        buzzer.stop();
+        osDelay(25);
+    }
+}
+
 // 请求播放音效的函数
 void request_sound_effect(SoundEffect effect) {
     sound_request = effect;
@@ -57,6 +79,12 @@ extern "C" void buzzer_task()
                     break;
                 case SoundEffect::SWITCH_DOWN:
                     play_switch_down_sound();
+                    break;
+                case SoundEffect::LEFT_SWITCH_UP:
+                    play_left_switch_up_sound();
+                    break;
+                case SoundEffect::LEFT_SWITCH_DOWN:
+                    play_left_switch_down_sound();
                     break;
                 default:
                     break;

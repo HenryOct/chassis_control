@@ -5,8 +5,10 @@
 enum class SoundEffect {
     NONE,
     STARTUP,
-    SWITCH_UP,    // 升调：拨杆向上
-    SWITCH_DOWN   // 降调：拨杆向下
+    SWITCH_UP,        // 升调：右拨杆向上
+    SWITCH_DOWN,      // 降调：右拨杆向下
+    LEFT_SWITCH_UP,   // 高音调：左拨杆向上
+    LEFT_SWITCH_DOWN  // 低音调：左拨杆向下
 };
 
 // 请求播放音效的函数声明

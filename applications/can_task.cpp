@@ -32,6 +32,9 @@ extern "C" void can_task(void const * argument)
                        pm02.power_heat.buffer_energy,
                        pm02.robot_status.power_management_chassis_output);
         
+        // 根据左拨杆状态覆盖电容模式
+        super_cap_tx_data[0] = static_cast<uint8_t>(current_supercap_mode);
+        
         for (int i = 0; i < 8; i++) {
             can2.tx_data[i] = super_cap_tx_data[i];
         }

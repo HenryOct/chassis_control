@@ -64,6 +64,9 @@ extern ChassisData chassis_data;
 // 超级电容实例化 (自动模式)
 inline sp::SuperCap super_cap(sp::SuperCapMode::AUTOMODE);
 
+// 当前电容工作模式 (由左拨杆控制)
+extern sp::SuperCapMode current_supercap_mode;
+
 // PID参数定义 (简化版本，移除复杂滤波)
 constexpr float PID_DT = 0.001f;    // 1000Hz控制频率
 constexpr float PID_KP = 0.5f;      // 比例增益
@@ -74,9 +77,11 @@ constexpr float PID_MIO = 1.0f;     // 积分输出限制 (N·m)
 constexpr float PID_ALPHA = 0.0f;   // D项滤波系数 (不使用滤波)
 
 // 功率模型参数（需要根据实际测试调整）
-constexpr float K1_TORQUE_LOSS = 2.37f;        // 转矩损耗系数
-constexpr float K2_SPEED_LOSS = 0.015f;        // 角速度损耗系数  
-constexpr float K3_STATIC_POWER = 3.2f;       // 静态待机功耗 W
+constexpr float K1_TORQUE_LOSS = 2.0f;        // 转矩损耗系数
+constexpr float K2_SPEED_LOSS = 0.005f;        // 角速度损耗系数  
+constexpr float K3_STATIC_POWER = 6.2f;       // 静态待机功耗 W
+constexpr float K4_TORQUE_RATE = 0.007f;         // 转矩变化率系数
+constexpr float K5_SPEED_RATE = 0.0f;         // 速度变化率系数
 
 // PID控制器 - 每个轮子一个速度环PID
 //                                    dt     kp    ki    kd    mo   mio   alpha
