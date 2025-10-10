@@ -7,11 +7,11 @@
 
 sp::Plotter plotter(&huart1);
 
-// 绘图任务，发送数据到SerialPlot进行可视化
+// 数据可视化任务
 extern "C" void plot_task()
 {
-  while (true)                  {
-    
+  while (true) 
+  {
     plotter.plot(
         chassis_data.chassis_power_limit,
         chassis_data.power_in,

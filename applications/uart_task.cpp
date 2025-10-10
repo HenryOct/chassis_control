@@ -9,7 +9,7 @@ extern UART_HandleTypeDef huart6;
 sp::DBus remote(&huart3);
 sp::PM02 pm02(&huart6);
 
-// UART任务，处理遥控器和裁判系统通信
+// 串口通信任务
 extern "C" void uart_task(void const * argument)
 {
     remote.request();
@@ -20,7 +20,7 @@ extern "C" void uart_task(void const * argument)
     }
 }
 
-// UART接收完成中断回调
+// 串口接收中断处理
 extern "C" void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef * huart, uint16_t Size)
 {
     auto stamp_ms = osKernelSysTick();
@@ -30,20 +30,20 @@ extern "C" void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef * huart, uint16_t 
         remote.request();
     }
     
-    if (huart == pm02.huart) {
+    if (huart == &huart6) {
         pm02.update(Size);
         pm02.request();
     }
 }
 
-// UART错误处理回调
+// 串口错误处理
 extern "C" void HAL_UART_ErrorCallback(UART_HandleTypeDef * huart)
 {
     if (huart == &huart3) {
         remote.request();
     }
     
-    if (huart == pm02.huart) {
+    if (huart == &huart6) {
         pm02.request();
     }
 }

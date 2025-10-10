@@ -11,29 +11,26 @@ extern CAN_HandleTypeDef hcan2;
 sp::CAN can2(&hcan2);
 ChassisData chassis_data;
 
-// CAN任务，处理电机和超级电容通信
+// CAN通信任务
 extern "C" void can_task(void const * argument)
 {
     can2.config();
     can2.start();
     
     while (true) {
-        // 发送底盘电机控制命令
+        // 底盘电机控制
         chassis_lf.write(can2.tx_data);
         chassis_lr.write(can2.tx_data);
         chassis_rf.write(can2.tx_data);
         chassis_rr.write(can2.tx_data);
         can2.send(0x200);
         
-        // 发送超级电容控制命令
+        // 超级电容控制
         uint8_t super_cap_tx_data[8];
         super_cap.write(super_cap_tx_data, 
                        chassis_data.chassis_power_limit, 
                        pm02.power_heat.buffer_energy,
                        pm02.robot_status.power_management_chassis_output);
-        
-        // 根据左拨杆状态覆盖电容模式
-        super_cap_tx_data[0] = static_cast<uint8_t>(current_supercap_mode);
         
         for (int i = 0; i < 8; i++) {
             can2.tx_data[i] = super_cap_tx_data[i];
