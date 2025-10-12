@@ -9,7 +9,7 @@
 constexpr uint16_t DEFAULT_POWER_LIMIT = 80;
 constexpr float POWER_SCALE_MIN = 0.1f;
 constexpr float MAX_LINEAR_SPEED = 2.0f;
-constexpr float ROTATION_SPEED = 5.0f;
+constexpr float ROTATION_SPEED = 10.0f;
 constexpr float MAX_SAFE_TORQUE = 8.0f;
 constexpr uint32_t CONTROL_PERIOD_MS = 1;
 constexpr uint32_t OFFLINE_DELAY_MS = 10;
