@@ -4,8 +4,7 @@
 extern TIM_HandleTypeDef htim1;
 
 // 舵机实例化
-sp::Servo servo(&htim1, TIM_CHANNEL_1, 168e6f, 180.0f); // C板配置
-// sp::Servo servo(&htim1, TIM_CHANNEL_3, 240e6f, 180.0f); // 达妙配置
+sp::Servo servo(&htim1, TIM_CHANNEL_1, 168e6f, 180.0f);
 
 // 舵机控制任务，上电后匀速旋转0-180度
 extern "C" void servo_task()

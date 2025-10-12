@@ -14,6 +14,8 @@ constexpr float MAX_SAFE_TORQUE = 8.0f;
 constexpr uint32_t CONTROL_PERIOD_MS = 1;
 constexpr uint32_t OFFLINE_DELAY_MS = 10;
 
+// 当前电容工作模式实例化
+sp::SuperCapMode current_supercap_mode = sp::SuperCapMode::AUTOMODE;
 
 static sp::DBusSwitchMode last_sw_r = sp::DBusSwitchMode::MID;
 static sp::DBusSwitchMode last_sw_l = sp::DBusSwitchMode::MID;
@@ -263,9 +265,9 @@ extern "C" void chassis_control_task()
         
         // 电容模式设置
         if (remote.sw_l == sp::DBusSwitchMode::MID) {
-            super_cap.set_mode(sp::SuperCapMode::DISCHARGE);
+            current_supercap_mode = sp::SuperCapMode::DISCHARGE;  // 只放不充模式
         } else {
-            super_cap.set_mode(sp::SuperCapMode::AUTOMODE);
+            current_supercap_mode = sp::SuperCapMode::AUTOMODE;   // 自动模式
         }
         
         // 底盘控制逻辑
